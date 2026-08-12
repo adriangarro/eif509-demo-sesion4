@@ -1,0 +1,12 @@
+# Datos locales de los contenedores (si se montaran carpetas en vez de volúmenes)
+data/
+dump/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.idea/
+.vscode/
+*.swp
