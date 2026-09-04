@@ -12,13 +12,14 @@ para decidir cuándo conviene una base documental.
 
 Al final de esta guía tendrán:
 
-- **Dos bases de datos corriendo juntas en Docker**: PostgreSQL 16 (el
+- **Dos bases de datos en ejecución simultánea en Docker**: PostgreSQL 16 (el
   núcleo transaccional de pedidos, visto en la Sesión 3) y MongoDB 7
   (la parte documental). A esto se le llama **persistencia políglota**:
-  cada subdominio usa el tipo de base que mejor le calza.
+  cada subdominio usa el tipo de base que mejor se ajusta a sus necesidades.
 - Una colección `bitacora_pedidos` donde cada documento guarda el
-  historial de un pedido como un **arreglo anidado de eventos** — lo que
-  en el modelo relacional serían dos tablas con JOIN, aquí viaja junto.
+  historial de un pedido como un **arreglo anidado de eventos**: lo que
+  en el modelo relacional serían dos tablas con JOIN, aquí se almacena en un
+  solo documento.
 - Consultas que buscan **dentro de esos arreglos anidados** con la
   notación de punto (`"eventos.tipo"`), el momento clave de la demo.
 
@@ -42,8 +43,8 @@ Notas por sistema operativo:
   plugin de Compose (`docker compose`, sin guion).
 - **mongosh** viene incluido dentro de Compass (pestaña `_MONGOSH` en la
   parte inferior), así que si instalan Compass no necesitan instalarlo
-  aparte — solo lo necesitan standalone si prefieren trabajar 100 % en
-  terminal.
+  aparte; solo lo necesitan por separado si prefieren trabajar únicamente
+  en la terminal.
 
 No necesitan instalar PostgreSQL ni MongoDB en su máquina: ambos corren
 dentro de contenedores Docker.
@@ -57,17 +58,17 @@ git clone https://github.com/adriangarro/eif509-demo-sesion4.git
 cd eif509-demo-sesion4
 ```
 
-### 2. Verificar que Docker Desktop está corriendo
+### 2. Verificar que Docker Desktop está en ejecución
 
-Abran Docker Desktop y esperen a que el ícono de la ballena quede fijo
-(en verde/estable). Para confirmarlo desde la terminal:
+Abran Docker Desktop y esperen a que el ícono de la ballena quede estable
+(en verde). Para confirmarlo desde la terminal:
 
 ```bash
 docker info
 ```
 
 Si responde con información del servidor (versión, contenedores, etc.),
-está corriendo. Si ven `Cannot connect to the Docker daemon`, Docker
+está en ejecución. Si ven `Cannot connect to the Docker daemon`, Docker
 Desktop no está abierto: ábranlo y esperen unos segundos antes de
 reintentar.
 
@@ -77,13 +78,13 @@ reintentar.
 docker compose up -d
 ```
 
-La bandera `-d` (*detached*) deja los contenedores corriendo en segundo
+La bandera `-d` (*detached*) deja los contenedores en ejecución en segundo
 plano y les devuelve la terminal. La **primera vez** Docker descarga las
 imágenes `postgres:16` y `mongo:7` (varios cientos de MB; puede tardar
 unos minutos según su conexión). Las siguientes veces arranca en
 segundos.
 
-### 4. Verificar que ambos contenedores están vivos
+### 4. Verificar que ambos contenedores están en ejecución
 
 ```bash
 docker ps
@@ -123,7 +124,7 @@ mongosh
 ```
 
 Sin argumentos se conecta a `localhost:27017`. Deben ver el prompt
-`test>`. Salgan con `exit` o `Ctrl+D` cuando quieran.
+`test>`. Salgan con `exit` o `Ctrl+D` cuando lo deseen.
 
 ## Ejecución de la demo
 
@@ -188,7 +189,7 @@ Desde la raíz del repositorio:
 mongosh --quiet < mongo/02-consultas.mongodb.js
 ```
 
-El script corre 4 consultas. Qué observar en cada una:
+El script ejecuta 4 consultas. Qué observar en cada una:
 
 1. **`{ cliente: "Ana Rojas" }`** — filtro por campo simple, equivalente
    a un `WHERE` de SQL. Devuelve 1 documento.
@@ -197,11 +198,11 @@ El script corre 4 consultas. Qué observar en cada una:
    pedidos que tienen al menos un evento `"pagado"` (los de Ana, Carmen
    y el 1004 de Luis). En SQL esto habría requerido un JOIN contra una
    tabla de eventos; aquí es una consulta directa sobre el documento.
-3. **Proyección** `{ pedido_id: 1, cliente: 1, _id: 0 }` — traer solo
+3. **Proyección** `{ pedido_id: 1, cliente: 1, _id: 0 }` — obtener solo
    los campos que interesan. Devuelve los 4 documentos pero únicamente
    con `pedido_id` y `cliente`.
 4. **`countDocuments({ "eventos.tipo": "enviado" })`** — contar sin
-   traer documentos. Devuelve `1` (solo el pedido de Carmen Solís fue
+   recuperar documentos. Devuelve `1` (solo el pedido de Carmen Solís fue
    enviado).
 
 ## Comandos útiles
@@ -210,12 +211,12 @@ El script corre 4 consultas. Qué observar en cada una:
 |---|---|
 | Levantar los servicios | `docker compose up -d` |
 | Detener (conserva los datos) | `docker compose down` |
-| Detener **borrando los datos** | `docker compose down -v` — úsenlo para reiniciar la demo desde cero o si insertaron datos duplicados |
+| Detener **eliminando los datos** | `docker compose down -v`; úsenlo para reiniciar la demo desde cero o si insertaron datos duplicados |
 | Ver logs de MongoDB | `docker compose logs -f mongo` |
 | Ver logs de PostgreSQL | `docker compose logs -f db` |
 | Reiniciar desde cero | `docker compose down -v && docker compose up -d` |
 
-Ojo: si ejecutan el script de inserción dos veces sin reiniciar, los
+Importante: si ejecutan el script de inserción dos veces sin reiniciar, los
 documentos quedan duplicados (MongoDB genera un `_id` nuevo cada vez).
 Solución: `docker compose down -v`, levantar de nuevo e insertar una vez.
 
@@ -223,11 +224,11 @@ Solución: `docker compose down -v`, levantar de nuevo e insertar una vez.
 
 | Problema | Causa | Solución |
 |---|---|---|
-| `Cannot connect to the Docker daemon` | Docker Desktop no está corriendo | Abrir Docker Desktop y esperar el ícono estable; reintentar |
-| `port is already allocated` en 27017 | Ya hay un MongoDB local corriendo | En `docker-compose.yml` cambiar a `"27018:27017"` y conectarse con `mongodb://localhost:27018` (Compass) o `mongosh --port 27018` |
-| `port is already allocated` en 5432 | Ya hay un PostgreSQL local corriendo | En `docker-compose.yml` cambiar a `"5433:5432"` |
-| Compass no conecta | El contenedor no está arriba, o el puerto cambió | Verificar con `docker ps` que `mongo` está `Up` y que la cadena de conexión usa el puerto correcto |
-| La imagen no descarga (red lenta o caída) | Problemas de conexión | Descargar de previo con `docker compose pull` desde una buena red (por ejemplo, antes de venir a clase) |
+| `Cannot connect to the Docker daemon` | Docker Desktop no está en ejecución | Abrir Docker Desktop y esperar el ícono estable; reintentar |
+| `port is already allocated` en 27017 | Ya hay un MongoDB local en ejecución | En `docker-compose.yml` cambiar a `"27018:27017"` y conectarse con `mongodb://localhost:27018` (Compass) o `mongosh --port 27018` |
+| `port is already allocated` en 5432 | Ya hay un PostgreSQL local en ejecución | En `docker-compose.yml` cambiar a `"5433:5432"` |
+| Compass no se conecta | El contenedor no está en ejecución, o el puerto cambió | Verificar con `docker ps` que `mongo` está `Up` y que la cadena de conexión usa el puerto correcto |
+| La imagen no descarga (red lenta o caída) | Problemas de conexión | Descargar de previo con `docker compose pull` desde una conexión estable (por ejemplo, antes de la clase) |
 | `mongosh: command not found` | mongosh no instalado o no está en el PATH | Instalarlo (ver Requisitos previos) o usar la pestaña `_MONGOSH` de Compass |
 
 ## Relación con el Laboratorio 2
